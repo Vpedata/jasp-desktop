@@ -24,12 +24,12 @@ Form {
     id: form
 
     VariablesForm { id: variablesFormPlanning; implicitHeight: 110
-            AvailableVariablesList { name: "variablesFormPlanning" }
-            AssignedVariablesList { name: "recordNumberVariable"; title: qsTr("Record numbers"); id: recordNumberVariable }
+            AvailableVariablesList { name: "variablesAva" }
+            AssignedVariablesList { name: "variables"; title: qsTr("something numbers"); id: recordNumberVariable }
            
         }
 
-    TableView
+ /*   TableView
     {
         id:         table
         name:       "filteredData"
@@ -45,7 +45,7 @@ Form {
         name:   "hahahaFilter"
         value:  table.filter
         
-    }
+    }*/
 
 
 	ComputedColumnField { name: "hallo"; text: "fill me!"; }
