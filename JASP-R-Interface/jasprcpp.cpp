@@ -701,7 +701,7 @@ void jaspRCPP_setColumnDataHelper_FactorsLevels(Rcpp::Vector<INTSXP> data, int *
 
 RBridgeColumnType* jaspRCPP_marshallSEXPs(SEXP columns, SEXP columnsAsNumeric, SEXP columnsAsOrdinal, SEXP columnsAsNominal, SEXP allColumns, size_t * colMax)
 {
-	std::map<std::string, ColumnType> columnsRequested;
+	std::map<std::string, columnType> columnsRequested;
 
 	if (Rf_isLogical(allColumns) && Rcpp::as<bool>(allColumns))
 	{
@@ -709,11 +709,11 @@ RBridgeColumnType* jaspRCPP_marshallSEXPs(SEXP columns, SEXP columnsAsNumeric, S
 		if (columns)
 		{
 			for (size_t i = 0; i < *colMax; i++)
-				columnsRequested[columns[i]] = ColumnTypeUnknown;
+				columnsRequested[columns[i]] = columnType::unknown;
 		}
 	}
 
-	auto setTypeRequested = [&columnsRequested](SEXP cols, ColumnType SetThis)
+	auto setTypeRequested = [&columnsRequested](SEXP cols, columnType SetThis)
 	{
 		if(Rf_isString(cols))
 		{
@@ -723,17 +723,17 @@ RBridgeColumnType* jaspRCPP_marshallSEXPs(SEXP columns, SEXP columnsAsNumeric, S
 		}
 	};
 
-	setTypeRequested(columns,			ColumnTypeUnknown);
-	setTypeRequested(columnsAsNumeric,	ColumnTypeScale);
-	setTypeRequested(columnsAsOrdinal,	ColumnTypeOrdinal);
-	setTypeRequested(columnsAsNominal,	ColumnTypeNominal);
+	setTypeRequested(columns,			columnType::unknown);
+	setTypeRequested(columnsAsNumeric,	columnType::scale);
+	setTypeRequested(columnsAsOrdinal,	columnType::ordinal);
+	setTypeRequested(columnsAsNominal,	columnType::nominal);
 
 	RBridgeColumnType* result = static_cast<RBridgeColumnType*>(calloc(columnsRequested.size(), sizeof(RBridgeColumnType)));
 	int colNo = 0;
 	for (auto const &columnRequested : columnsRequested)
 	{
 		result[colNo].name = strdup(columnRequested.first.c_str());
-		result[colNo].type = columnRequested.second;
+		result[colNo].type = int(columnRequested.second);
 		colNo++;
 	}
 	*colMax = colNo;

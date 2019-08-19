@@ -1,8 +1,8 @@
-import QtQuick 2.9
-import QtQuick.Controls 1.4 as Old
-import QtQuick.Controls 2.2
-import QtGraphicalEffects 1.0
-import JASP.Theme 1.0
+import QtQuick				2.9
+import QtQuick.Controls		1.4 as Old
+import QtQuick.Controls		2.2
+import QtGraphicalEffects	1.0
+import JASP.Theme			1.0
 
 FocusScope
 {
@@ -96,11 +96,12 @@ FocusScope
 					{
 						dataSetModel.setColumnTypeFromQML(columnIndex, columnType)
 
-						if(variablesWindow.chosenColumn === columnIndex && colIcon.myColumnType() === columnTypeScale)
-							variablesWindow.chooseColumn(-1)
+						if(labelModel.chosenColumn === columnIndex && colIcon.myColumnType() === columnTypeScale)
+							labelModel.visible = false;
 					}
 
-					ColumnTypeModel {
+					ColumnTypeModel
+					{
 						id: columnTypeModel
 					}
 
@@ -273,15 +274,18 @@ FocusScope
 
 					onClicked:
 					{
-						var chooseThisColumn = (columnIndex > -1 && dataSetModel.columnIcon(columnIndex)  !== columnTypeScale) ? columnIndex : -1
-						variablesWindow.chooseColumn(chooseThisColumn)
-
-						if(columnIndex >= 0 && dataSetModel.columnUsedInEasyFilter(columnIndex))
+						if(columnIndex >= 0)
 						{
-							filterWindow.showEasyFilter = true
-							filterWindow.open()
-						}
+							var changedIndex		= labelModel.chosenColumn	!= columnIndex
+							labelModel.chosenColumn	= columnIndex;
+							labelModel.visible		= changedIndex ? true : !labelModel.visible;
 
+							if(dataSetModel.columnUsedInEasyFilter(columnIndex))
+							{
+								filterWindow.showEasyFilter = true
+								filterWindow.open()
+							}
+						}
 					}
 
 					hoverEnabled:		true

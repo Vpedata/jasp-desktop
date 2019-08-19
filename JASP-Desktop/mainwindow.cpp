@@ -85,14 +85,6 @@ QMap<QString, QVariant> MainWindow::_iconDisabledFiles {
 	{ "scale"		, _iconPath + "variable-scale-disabled.svg"}
 };
 
-QMap<int, QString> MainWindow::_columnTypeMap {
-	{ Column::ColumnTypeNominalText	, "nominalText" },
-	{ Column::ColumnTypeNominal		, "nominal"},
-	{ Column::ColumnTypeOrdinal		, "ordinal"},
-	{ Column::ColumnTypeScale		, "scale"}
-};
-
-
 MainWindow::MainWindow(QApplication * application) : QObject(application), _application(application)
 {
 	JASPTIMER_START(MainWindowConstructor);
@@ -102,10 +94,12 @@ MainWindow::MainWindow(QApplication * application) : QObject(application), _appl
 	makeAppleMenu(); //Doesnt do anything outside of magical apple land
 
 	_preferences			= new PreferencesModel(this);
-	_package				= new DataSetPackage();
+	_package				= new DataSetPackage(this);
 	_dynamicModules			= new DynamicModules(this);
-	_analyses				= new Analyses(this, _dynamicModules);
+	_analyses				= new Analyses(_package, _dynamicModules);
 	_engineSync				= new EngineSync(_analyses, _package, _dynamicModules, this);
+	_datasetTableModel		= new DataSetTableModel(_package);
+	_labelModel				= new LabelModel(_package);
 
 	initLog(); //initLog needs _preferences and _engineSync!
 
@@ -113,12 +107,10 @@ MainWindow::MainWindow(QApplication * application) : QObject(application), _appl
 
 	_resultsJsInterface		= new ResultsJsInterface();
 	_odm					= new OnlineDataManager(this);
-	_tableModel				= new DataSetTableModel();
-	_levelsTableModel		= new LevelsTableModel(this);
-	_labelFilterGenerator	= new labelFilterGenerator(_package, this);
-	_columnsModel			= new ColumnsModel(this);
-	_computedColumnsModel	= new ComputedColumnsModel(_analyses, this);
-	_filterModel			= new FilterModel(_package, this);
+	_labelFilterGenerator	= new labelFilterGenerator(_labelModel, this);
+	_columnsModel			= new ColumnsModel(_datasetTableModel);
+	_computedColumnsModel	= new ComputedColumnsModel(_analyses, _package);
+	_filterModel			= new FilterModel(_package, _labelFilterGenerator);
 	_ribbonModel			= new RibbonModel(_dynamicModules, _preferences,
 									{ "Descriptives", "T-Tests", "ANOVA", "Regression", "Frequencies", "Factor" },
 									{ "Audit", "BAIN", "Network", "Machine Learning", "Meta Analysis", "SEM", "Summary Statistics" });
@@ -140,7 +132,7 @@ MainWindow::MainWindow(QApplication * application) : QObject(application), _appl
 	qmlRegisterType<JASPDoubleValidator>	("JASP", 1, 0, "JASPDoubleValidator");
 	qmlRegisterType<ResultsJsInterface>		("JASP", 1, 0, "ResultsJsInterface");
 
-	loadQML();
+	QTimer::singleShot(0, [&](){ loadQML(); });
 
 	QString missingvaluestring = _settings.value("MissingValueList", "").toString();
 	if (missingvaluestring != "")
@@ -160,15 +152,18 @@ MainWindow::~MainWindow()
 {
 	try
 	{
+		_engineSync->stopEngines();
 		_odm->clearAuthenticationOnExit(OnlineDataManager::OSF);
 
 		delete _resultsJsInterface;
-		delete _engineSync;
-		if (_package && _package->dataSet())
+
+		if (_package->hasDataSet())
 		{
-			_loader.free(_package->dataSet());
+			_package->freeDataSet();
 			_package->reset();
 		}
+		delete _engineSync;
+
 	}
 	catch(...)
 	{
@@ -185,58 +180,45 @@ void MainWindow::startOnlineDataManager()
 
 }
 
-Q_DECLARE_METATYPE(Column::ColumnType)
+Q_DECLARE_METATYPE(columnType)
 
 void MainWindow::makeConnections()
 {
-	_package->isModifiedChanged.connect(	boost::bind(&MainWindow::packageChanged,		this,	_1));
-	_package->dataChanged.connect(			boost::bind(&MainWindow::packageDataChanged,	this,	_1, _2, _3, _4, _5, _6));
-	_package->enginesInitializing.connect(	boost::bind(&MainWindow::enginesInitializing,	this));
-	_package->pauseEngines.connect(			boost::bind(&MainWindow::pauseEngines,			this));
-	_package->resumeEngines.connect(		boost::bind(&MainWindow::resumeEngines,			this));
-
 	connect(this,					&MainWindow::saveJaspFile,							this,					&MainWindow::saveJaspFileHandler,							Qt::QueuedConnection);
 	connect(this,					&MainWindow::imageBackgroundChanged,				_engineSync,			&EngineSync::imageBackgroundChanged							);
 	connect(this,					&MainWindow::ppiChanged,                        	_engineSync,			&EngineSync::ppiChanged                                     );
 	connect(this,					&MainWindow::screenPPIChanged,						_preferences,			&PreferencesModel::setDefaultPPI							);
 	connect(this,					&MainWindow::editImageCancelled,					_resultsJsInterface,	&ResultsJsInterface::cancelImageEdit						);
 
-	connect(_levelsTableModel,		&LevelsTableModel::labelFilterChanged,				_labelFilterGenerator,	&labelFilterGenerator::labelFilterChanged					);
-	connect(_levelsTableModel,		&LevelsTableModel::notifyColumnHasFilterChanged,	_tableModel,			&DataSetTableModel::notifyColumnFilterStatusChanged			);
-	connect(_levelsTableModel,		&LevelsTableModel::refreshConnectedModels,			_tableModel,			&DataSetTableModel::refreshColumn							);
-	connect(_levelsTableModel,		&LevelsTableModel::refreshConnectedModelsByName,	_computedColumnsModel,	&ComputedColumnsModel::checkForDependentColumnsToBeSentSlot	);
 
-	connect(_tableModel,			&DataSetTableModel::dataSetChanged,					this,					&MainWindow::dataSetChanged									);
-	connect(_tableModel,			&DataSetTableModel::headerDataChanged,				_columnsModel,			&ColumnsModel::datasetHeaderDataChanged						);
-	connect(_tableModel,			&DataSetTableModel::modelReset,						_columnsModel,			&ColumnsModel::refresh,										Qt::QueuedConnection);
-	connect(_tableModel,			&DataSetTableModel::allFiltersReset,				_levelsTableModel,		&LevelsTableModel::refresh,									Qt::QueuedConnection);
-	connect(_tableModel,			&DataSetTableModel::modelReset,						_levelsTableModel,		&LevelsTableModel::refresh,									Qt::QueuedConnection);
-	connect(_tableModel,			&DataSetTableModel::allFiltersReset,				_labelFilterGenerator,	&labelFilterGenerator::labelFilterChanged					);
-	connect(_tableModel,			&DataSetTableModel::columnDataTypeChanged,			_computedColumnsModel,	&ComputedColumnsModel::recomputeColumn						);
-	connect(_tableModel,			&DataSetTableModel::columnDataTypeChanged,			_analyses,				&Analyses::dataSetColumnsChanged							);
+	connect(_package,				&DataSetPackage::labelFilterChanged,				_labelFilterGenerator,	&labelFilterGenerator::labelFilterChanged					);
+	connect(_package,				&DataSetPackage::dataSynched,						this,					&MainWindow::packageDataChanged,							Qt::QueuedConnection);
+	connect(_package,				&DataSetPackage::isModifiedChanged,					this,					&MainWindow::packageChanged									);
+	connect(_package,				&DataSetPackage::columnDataTypeChanged,				_analyses,				&Analyses::dataSetColumnsChanged							);
+	connect(_package,				&DataSetPackage::allFiltersReset,					_labelFilterGenerator,	&labelFilterGenerator::labelFilterChanged					);
+	connect(_package,				&DataSetPackage::columnDataTypeChanged,				_computedColumnsModel,	&ComputedColumnsModel::recomputeColumn						);
+	connect(_package,				&DataSetPackage::freeDatasetSignal,					&_loader,				&AsyncLoader::free											);
 
 	connect(_engineSync,			&EngineSync::computeColumnSucceeded,				_computedColumnsModel,	&ComputedColumnsModel::computeColumnSucceeded				);
 	connect(_engineSync,			&EngineSync::computeColumnFailed,					_computedColumnsModel,	&ComputedColumnsModel::computeColumnFailed					);
 	connect(_engineSync,			&EngineSync::columnDataTypeChanged,					_analyses,				&Analyses::dataSetColumnsChanged							);
+	connect(_engineSync,			&EngineSync::engineTerminated,						this,					&MainWindow::fatalError										);
+	connect(_engineSync,			&EngineSync::refreshAllPlotsExcept,					_analyses,				&Analyses::refreshAllPlots									);
 	connect(_engineSync,			&EngineSync::processNewFilterResult,				_filterModel,			&FilterModel::processFilterResult							);
 	connect(_engineSync,			&EngineSync::processFilterErrorMsg,					_filterModel,			&FilterModel::processFilterErrorMsg							);
 	connect(_engineSync,			&EngineSync::computeColumnSucceeded,				_filterModel,			&FilterModel::computeColumnSucceeded						);
-	connect(_engineSync,			&EngineSync::refreshAllPlotsExcept,					_analyses,				&Analyses::refreshAllPlots									);
-	connect(_engineSync,			&EngineSync::engineTerminated,						this,					&MainWindow::fatalError										);
 	connect(_engineSync,			&EngineSync::moduleLoadingSucceeded,				_ribbonModel,			&RibbonModel::moduleLoadingSucceeded						);
 
-	qRegisterMetaType<Column::ColumnType>();
+	qRegisterMetaType<columnType>();
 
-	connect(_computedColumnsModel,	&ComputedColumnsModel::refreshColumn,				_tableModel,			&DataSetTableModel::refreshColumn,							Qt::QueuedConnection);
-	connect(_computedColumnsModel,	&ComputedColumnsModel::refreshColumn,				_levelsTableModel,		&LevelsTableModel::refreshColumn,							Qt::QueuedConnection);
-	connect(_computedColumnsModel,	&ComputedColumnsModel::headerDataChanged,			_tableModel,			&DataSetTableModel::headerDataChanged,						Qt::QueuedConnection);
+	connect(_computedColumnsModel,	&ComputedColumnsModel::refreshColumn,				_package,				&DataSetPackage::refreshColumn,								Qt::QueuedConnection);
+	connect(_computedColumnsModel,	&ComputedColumnsModel::headerDataChanged,			_package,				&DataSetPackage::headerDataChanged,							Qt::QueuedConnection);
 	connect(_computedColumnsModel,	&ComputedColumnsModel::sendComputeCode,				_engineSync,			&EngineSync::computeColumn,									Qt::QueuedConnection);
-	connect(_computedColumnsModel,	&ComputedColumnsModel::dataSetChanged,				_tableModel,			&DataSetTableModel::dataSetChanged							);
-	connect(_computedColumnsModel,	&ComputedColumnsModel::refreshData,					_tableModel,			&DataSetTableModel::refresh,								Qt::QueuedConnection);
+	connect(_computedColumnsModel,	&ComputedColumnsModel::refreshData,					_package,				&DataSetPackage::refresh,									Qt::QueuedConnection);
 	connect(_computedColumnsModel,	&ComputedColumnsModel::showAnalysisForm,			_analyses,				&Analyses::selectAnalysis									);
-	connect(_computedColumnsModel,	&ComputedColumnsModel::showAnalysisForm,			this,					&MainWindow::showResultsPanel								);
 	connect(_computedColumnsModel,	&ComputedColumnsModel::dataColumnAdded,				_fileMenu,				&FileMenu::dataColumnAdded									);
 	connect(_computedColumnsModel,	&ComputedColumnsModel::refreshData,					_analyses,				&Analyses::refreshAvailableVariables,						Qt::QueuedConnection);
+	connect(_computedColumnsModel,	&ComputedColumnsModel::showAnalysisForm,			this,					&MainWindow::showResultsPanel								);
 
 	connect(_resultsJsInterface,	&ResultsJsInterface::packageModified,				this,					&MainWindow::setPackageModified								);
 	connect(_resultsJsInterface,	&ResultsJsInterface::analysisChangedDownstream,		this,					&MainWindow::analysisChangedDownstreamHandler				);
@@ -274,7 +256,7 @@ void MainWindow::makeConnections()
 
 	connect(&_loader,				&AsyncLoader::progress,								this,					&MainWindow::setProgressStatus,								Qt::QueuedConnection);
 
-	connect(_preferences,			&PreferencesModel::missingValuesChanged,			this,					&MainWindow::emptyValuesChangedHandler						);
+	connect(_preferences,			&PreferencesModel::missingValuesChanged,			_package,				&DataSetPackage::emptyValuesChangedHandler					);
 	connect(_preferences,			&PreferencesModel::plotBackgroundChanged,			this,					&MainWindow::setImageBackgroundHandler						);
 	connect(_preferences,			&PreferencesModel::plotPPIChanged,					this,					&MainWindow::plotPPIChangedHandler							);
 	connect(_preferences,			&PreferencesModel::dataAutoSynchronizationChanged,	_fileMenu,				&FileMenu::dataAutoSynchronizationChanged					);
@@ -283,8 +265,8 @@ void MainWindow::makeConnections()
 	connect(_preferences,			&PreferencesModel::uiScaleChanged,					_resultsJsInterface,	&ResultsJsInterface::setZoom								);
 
 	connect(_filterModel,			&FilterModel::refreshAllAnalyses,					_analyses,				&Analyses::refreshAllAnalyses								);
-	connect(_filterModel,			&FilterModel::updateColumnsUsedInConstructedFilter, _tableModel,			&DataSetTableModel::setColumnsUsedInEasyFilter				);
-	connect(_filterModel,			&FilterModel::filterUpdated,						_tableModel,			&DataSetTableModel::refresh									);
+	connect(_filterModel,			&FilterModel::updateColumnsUsedInConstructedFilter, _package,				&DataSetPackage::setColumnsUsedInEasyFilter					);
+	connect(_filterModel,			&FilterModel::filterUpdated,						_package,				&DataSetPackage::refresh									);
 	connect(_filterModel,			&FilterModel::sendFilter,							_engineSync,			&EngineSync::sendFilter										);
 	connect(_filterModel,			&FilterModel::updateGeneratedFilterWithR,			_labelFilterGenerator,	&labelFilterGenerator::easyFilterConstructorRCodeChanged	);
 
@@ -306,32 +288,31 @@ void MainWindow::loadQML()
 
 	_qml = new QQmlApplicationEngine(this);
 
-	_qml->rootContext()->setContextProperty("mainWindow",				this);
-	_qml->rootContext()->setContextProperty("dataSetModel",				_tableModel);
-	_qml->rootContext()->setContextProperty("levelsTableModel",			_levelsTableModel);
-	_qml->rootContext()->setContextProperty("columnsModel",				_columnsModel);
-	_qml->rootContext()->setContextProperty("computedColumnsInterface",	_computedColumnsModel);
-	_qml->rootContext()->setContextProperty("engineSync",				_engineSync);
-	_qml->rootContext()->setContextProperty("filterModel",				_filterModel);
-	_qml->rootContext()->setContextProperty("ribbonModel",				_ribbonModel);
-	_qml->rootContext()->setContextProperty("ribbonModelFiltered",		_ribbonModelFiltered);
-	_qml->rootContext()->setContextProperty("dynamicModules",			_dynamicModules);
-	_qml->rootContext()->setContextProperty("resultMenuModel",			_resultMenuModel);
-
-	_qml->rootContext()->setContextProperty("fileMenuModel",			_fileMenu);
-	_qml->rootContext()->setContextProperty("analysesModel",			_analyses);
-	_qml->rootContext()->setContextProperty("resultsJsInterface",		_resultsJsInterface);
-	_qml->rootContext()->setContextProperty("helpModel",				_helpModel);
-	_qml->rootContext()->setContextProperty("aboutModel",				_aboutModel);
-	_qml->rootContext()->setContextProperty("preferencesModel",			_preferences);
+	_qml->rootContext()->setContextProperty("mainWindow",				this					);
+	_qml->rootContext()->setContextProperty("labelModel",				_labelModel				);
+	_qml->rootContext()->setContextProperty("aboutModel",				_aboutModel				);
+	_qml->rootContext()->setContextProperty("dataSetModel",				_datasetTableModel		);
+	_qml->rootContext()->setContextProperty("columnsModel",				_columnsModel			);
+	_qml->rootContext()->setContextProperty("analysesModel",			_analyses				);
+	_qml->rootContext()->setContextProperty("dynamicModules",			_dynamicModules			);
+	_qml->rootContext()->setContextProperty("preferencesModel",			_preferences			);
+	_qml->rootContext()->setContextProperty("resultsJsInterface",		_resultsJsInterface		);
+	_qml->rootContext()->setContextProperty("computedColumnsInterface",	_computedColumnsModel	);
+	_qml->rootContext()->setContextProperty("ribbonModelFiltered",		_ribbonModelFiltered	);
+	_qml->rootContext()->setContextProperty("resultMenuModel",			_resultMenuModel		);
+	_qml->rootContext()->setContextProperty("fileMenuModel",			_fileMenu				);
+	_qml->rootContext()->setContextProperty("filterModel",				_filterModel			);
+	_qml->rootContext()->setContextProperty("ribbonModel",				_ribbonModel			);
+	_qml->rootContext()->setContextProperty("engineSync",				_engineSync				);
+	_qml->rootContext()->setContextProperty("helpModel",				_helpModel				);
 
 	_qml->rootContext()->setContextProperty("baseBlockDim",				20); //should be taken from Theme
 	_qml->rootContext()->setContextProperty("baseFontSize",				16);
 
-	_qml->rootContext()->setContextProperty("columnTypeScale",			int(Column::ColumnType::ColumnTypeScale));
-	_qml->rootContext()->setContextProperty("columnTypeOrdinal",		int(Column::ColumnType::ColumnTypeOrdinal));
-	_qml->rootContext()->setContextProperty("columnTypeNominal",		int(Column::ColumnType::ColumnTypeNominal));
-	_qml->rootContext()->setContextProperty("columnTypeNominalText",	int(Column::ColumnType::ColumnTypeNominalText));
+	_qml->rootContext()->setContextProperty("columnTypeScale",			int(columnType::scale)		);
+	_qml->rootContext()->setContextProperty("columnTypeOrdinal",		int(columnType::ordinal)		);
+	_qml->rootContext()->setContextProperty("columnTypeNominal",		int(columnType::nominal)		);
+	_qml->rootContext()->setContextProperty("columnTypeNominalText",	int(columnType::nominalText)		);
 
 	bool debug = false;
 #ifdef JASP_DEBUG
@@ -345,6 +326,8 @@ void MainWindow::loadQML()
 	_qml->rootContext()->setContextProperty("iconDisabledFiles",	_iconDisabledFiles);
 
 	_qml->addImportPath("qrc:///components");
+
+	connect(_qml, &QQmlApplicationEngine::objectCreated, [&](QObject * obj, QUrl url) { if(obj == nullptr) { std::cerr << "Could not load QML: " + url.toString().toStdString() << std::endl; _application->exit(10); }});
 
 	_qml->load(QUrl("qrc:///components/JASP/Widgets/HelpWindow.qml"));
 	_qml->load(QUrl("qrc:///components/JASP/Widgets/AboutWindow.qml"));
@@ -502,13 +485,13 @@ void MainWindow::syncKeyPressed()
 	_fileMenu->sync();
 }
 
-void MainWindow::packageChanged(DataSetPackage *package)
+void MainWindow::packageChanged()
 {
 	QString title = windowTitle();
 	if (title.isEmpty())
 		title = "JASP";
 
-	if (package->isModified())	title += '*';
+	if (_package->isModified())	title += '*';
 	else						title.chop(1);
 
 
@@ -516,32 +499,34 @@ void MainWindow::packageChanged(DataSetPackage *package)
 }
 
 
-void MainWindow::refreshAnalysesUsingColumns(std::vector<std::string> &changedColumns,	 std::vector<std::string> &missingColumns,	 std::map<std::string, std::string> &changeNameColumns, bool rowCountChanged, bool hasNewColumns)
+void MainWindow::refreshAnalysesUsingColumns(	QStringList				changedColumns,
+												QStringList				missingColumns,
+												QMap<QString, QString>	changeNameColumns,
+												bool					rowCountChanged,
+												bool					hasNewColumns)
 {
+	std::map<std::string, std::string> changeNameColumnsStd = fq(changeNameColumns);
+
 	std::vector<std::string> oldColumnNames;
 
-	for (auto & keyval : changeNameColumns)
+	for (auto & keyval : changeNameColumnsStd)
 		oldColumnNames.push_back(keyval.first);
 
-	sort(changedColumns.begin(), changedColumns.end());
+	sort(changedColumns.begin(), changedColumns.end()); //Why are we sorting here?
 	sort(missingColumns.begin(), missingColumns.end());
 	sort(oldColumnNames.begin(), oldColumnNames.end());
 
-	_analyses->refreshAnalysesUsingColumns(changedColumns, missingColumns, changeNameColumns, oldColumnNames, hasNewColumns);
+	std::vector<std::string> changedColumnsStd(fq(changedColumns));
+	std::vector<std::string> missingColumnsStd(fq(missingColumns));
+
+	_analyses->refreshAnalysesUsingColumns(changedColumnsStd, missingColumnsStd, changeNameColumnsStd, oldColumnNames, hasNewColumns);
 	if(rowCountChanged)
 	{
 		QTimer::singleShot(0, _analyses, &Analyses::refreshAllAnalyses);
 	}
 
-	_computedColumnsModel->packageSynchronized(changedColumns, missingColumns, changeNameColumns, rowCountChanged);
+	_computedColumnsModel->packageSynchronized(changedColumnsStd, missingColumnsStd, changeNameColumnsStd, rowCountChanged);
 }
-
-void MainWindow::dataSetChanged(DataSet * dataSet)
-{
-	_package->setDataSet(dataSet);
-	setDataSetAndPackageInModels(_package);
-}
-
 
 void MainWindow::setImageBackgroundHandler(QString value)
 {
@@ -565,28 +550,18 @@ void MainWindow::plotPPIChangedHandler(int ppi, bool wasUserAction)
 }
 
 
-void MainWindow::setDataSetAndPackageInModels(DataSetPackage *package)
+void MainWindow::setDatasetLoaded()
 {
-	DataSet * dataSet = package == nullptr ? nullptr : package->dataSet();
-
-	_tableModel				-> setDataSetPackage(package);
-	_levelsTableModel		-> setDataSet(dataSet);
-	_columnsModel			-> setDataSet(dataSet);
-	_computedColumnsModel	-> setDataSetPackage(package);
-	_analyses				-> setDataSet(dataSet);
-	_filterModel			-> setDataSetPackage(package);
-
-	setDatasetLoaded(dataSet != nullptr && (dataSet->rowCount() > 0 || dataSet->columnCount() > 0));
+	setDatasetLoaded(_package->rowCount() > 0 || _package->columnCount() > 0);
 }
 
-void MainWindow::packageDataChanged(DataSetPackage *package,
-									vector<string> &changedColumns,
-									vector<string> &missingColumns,
-									map<string, string> &changeNameColumns,
-									bool rowCountChanged,
-									bool hasNewColumns)
+void MainWindow::packageDataChanged(	QStringList				changedColumns,
+										QStringList				missingColumns,
+										QMap<QString, QString>	changeNameColumns,
+										bool					rowCountChanged,
+										bool					hasNewColumns)
 {
-	setDataSetAndPackageInModels(package);
+	setDatasetLoaded();
 
 	_labelFilterGenerator->regenerateFilter();
 	_filterModel->sendGeneratedAndRFilter();
@@ -775,7 +750,7 @@ void MainWindow::dataSetIORequestHandler(FileEvent *event)
 	}
 	else if (event->operation() == FileEvent::FileSyncData)
 	{
-		if (_package->dataSet() == nullptr)
+		if (!_package->hasDataSet())
 			return;
 
 		connectFileEventCompleted(event);
@@ -791,6 +766,7 @@ void MainWindow::dataSetIORequestHandler(FileEvent *event)
 
 			switch(MessageForwarder::showSaveDiscardCancel("Save Workspace?", "Save changes to workspace " + title + " before closing?\n\nYour changes will be lost if you don't save them."))
 			{
+			default:
 			case MessageForwarder::DialogResponse::Cancel:
 				event->setComplete(false);
 				dataSetIOCompleted(event);
@@ -855,7 +831,7 @@ bool MainWindow::checkPackageModifiedBeforeClosing()
 
 void MainWindow::closeVariablesPage()
 {
-	_levelsTableModel->setChosenColumn(-1);
+	_labelModel->setVisible(false);
 }
 
 void MainWindow::dataSetIOCompleted(FileEvent *event)
@@ -897,10 +873,8 @@ void MainWindow::dataSetIOCompleted(FileEvent *event)
 		}
 		else
 		{
-			if (_package->dataSet() != nullptr)
-				_loader.free(_package->dataSet());
+			_package->freeDataSet();
 			_package->reset();
-			setDataSetAndPackageInModels(nullptr);
 			setWelcomePageVisible(true);
 
 			MessageForwarder::showWarning("Unable to open file because:\n" + event->message());
@@ -947,11 +921,8 @@ void MainWindow::dataSetIOCompleted(FileEvent *event)
 		{
 			_analyses->setVisible(false);
 			_analyses->clear();
-			setDataSetAndPackageInModels(nullptr);
 
-			if (_package->dataSet())
-				_loader.free(_package->dataSet());
-
+			_package->freeDataSet();
 			_package->reset();
 			setWelcomePageVisible(true);
 
@@ -975,7 +946,7 @@ void MainWindow::dataSetIOCompleted(FileEvent *event)
 
 void MainWindow::populateUIfromDataSet()
 {
-	setDataSetAndPackageInModels(_package);
+	setDatasetLoaded();
 
 	bool errorFound = false;
 	stringstream errorMsg;
@@ -1019,12 +990,12 @@ void MainWindow::populateUIfromDataSet()
 					errorFound = true;
 					corruptionStrings << "\n" << (++corruptAnalyses) << ": " << modProb.what();
 				}
-				catch (runtime_error e)
+				catch (runtime_error & e)
 				{
 					errorFound = true;
 					corruptionStrings << "\n" << (++corruptAnalyses) << ": " << e.what();
 				}
-				catch (exception e)
+				catch (exception & e)
 				{
 					errorFound = true;
 					corruptionStrings << "\n" << (++corruptAnalyses) << ": " << e.what();
@@ -1041,7 +1012,7 @@ void MainWindow::populateUIfromDataSet()
 
 	bool hasAnalyses = _analyses->count() > 0;
 
-	setDataAvailable((_package->dataSet()->rowCount() > 0 || _package->dataSet()->columnCount() > 0));
+	setDataAvailable((_package->rowCount() > 0 || _package->columnCount() > 0));
 
 	hideProgress();
 
@@ -1106,45 +1077,6 @@ void MainWindow::fatalError()
 		_application->exit(1);
 	}
 }
-
-
-void MainWindow::emptyValuesChangedHandler()
-{
-	if (_package->isLoaded())
-	{
-		vector<string> colChanged;
-		vector<string> missingColumns;
-		map<string, string> changeNameColumns;
-
-		_package->pauseEngines();
-		_package->dataSet()->setSynchingData(true);
-
-		try
-		{
-			colChanged = _package->dataSet()->resetEmptyValues(_package->emptyValuesMap());
-		}
-		catch (boost::interprocess::bad_alloc &e)
-		{
-			try {
-
-				_package->setDataSet(SharedMemory::enlargeDataSet(_package->dataSet()));
-				colChanged = _package->dataSet()->resetEmptyValues(_package->emptyValuesMap());
-			}
-			catch (exception &e)
-			{
-				throw runtime_error("Out of memory: this data set is too large for your computer's available memory");
-			}
-		}
-		catch (exception e)	{	cout << "MainWindow::emptyValuesChangedHandler n " << e.what() << std::endl; 	}
-		catch (...)			{	cout << "MainWindow::emptyValuesChangedHandler something when wrong...\n" << std::endl; }
-
-		_package->dataSet()->setSynchingData(false);
-		_package->resumeEngines();
-		_package->setModified(true);
-		packageDataChanged(_package, colChanged, missingColumns, changeNameColumns, false, false);
-	}
-}
-
 
 void MainWindow::saveTextToFileHandler(const QString &filename, const QString &data)
 {
@@ -1430,16 +1362,6 @@ void MainWindow::saveJaspFileHandler()
 bool MainWindow::enginesInitializing()
 {
 	return _engineSync->allEnginesInitializing();
-}
-
-void MainWindow::pauseEngines()
-{
-	_engineSync->pause();
-}
-
-void MainWindow::resumeEngines()
-{
-	_engineSync->resume();
 }
 
 void MainWindow::setProgressBarVisible(bool progressBarVisible)

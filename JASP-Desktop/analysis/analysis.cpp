@@ -264,11 +264,6 @@ void Analysis::setStatus(Analysis::Status status)
 	_status = status;
 }
 
-DataSet *Analysis::getDataSet() const
-{
-	return _analyses->getDataSet();
-}
-
 void Analysis::optionsChangedHandler(Option *option)
 {
 	if (_refreshBlocked)
@@ -410,4 +405,9 @@ QString	Analysis::fullHelpPath(QString helpFileName)
 {
 	if(isDynamicModule())	return dynamicModule()->helpFolderPath() + helpFileName;
 	else					return "analyses/" + helpFileName;
+}
+
+DataSetPackage * Analysis::getDataSetPackage() const
+{
+	return _analyses->getDataSetPackage();
 }

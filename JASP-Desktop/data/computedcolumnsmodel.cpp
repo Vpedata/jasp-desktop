@@ -1,11 +1,13 @@
 #include "computedcolumnsmodel.h"
 #include "utilities/jsonutilities.h"
+#include "utilities/qutils.h"
 #include "sharedmemory.h"
 #include "log.h"
 
-ComputedColumnsModel::ComputedColumnsModel(Analyses * analyses, QObject * parent)
-	: QObject(parent), _analyses(analyses)
+ComputedColumnsModel::ComputedColumnsModel(Analyses * analyses, DataSetPackage * dataSetPackage)
+	: QObject(dataSetPackage), _analyses(analyses), _package(dataSetPackage)
 {
+	connect(_package,	&DataSetPackage::dataSetChanged,				this, &ComputedColumnsModel::datasetLoadedChanged)				;
 	connect(this,		&ComputedColumnsModel::datasetLoadedChanged,	this, &ComputedColumnsModel::computeColumnJsonChanged			);
 	connect(this,		&ComputedColumnsModel::datasetLoadedChanged,	this, &ComputedColumnsModel::computeColumnRCodeChanged			);
 	connect(this,		&ComputedColumnsModel::datasetLoadedChanged,	this, &ComputedColumnsModel::computeColumnErrorChanged			);
@@ -16,6 +18,7 @@ ComputedColumnsModel::ComputedColumnsModel(Analyses * analyses, QObject * parent
 	connect(_analyses,	&Analyses::requestComputedColumnDestruction,	this, &ComputedColumnsModel::requestComputedColumnDestruction,	Qt::UniqueConnection);
 	connect(_analyses,	&Analyses::analysisRemoved,						this, &ComputedColumnsModel::analysisRemoved					);
 
+	_computedColumns = _package->computedColumnsPointer();
 }
 
 QString ComputedColumnsModel::computeColumnRCode()
@@ -110,7 +113,7 @@ bool ComputedColumnsModel::areLoopDependenciesOk(std::string columnName, std::st
 	{
 		(*_computedColumns)[columnName].checkForLoopInDepenedencies(code);
 	}
-	catch(std::logic_error e)
+	catch(std::logic_error & e)
 	{
 		validate(QString::fromStdString(columnName)); //To stop loading gif
 
@@ -124,7 +127,7 @@ bool ComputedColumnsModel::areLoopDependenciesOk(std::string columnName, std::st
 	return true;
 }
 
-void ComputedColumnsModel::emitSendComputeCode(QString columnName, QString code, Column::ColumnType colType)
+void ComputedColumnsModel::emitSendComputeCode(QString columnName, QString code, columnType colType)
 {
 	if(areLoopDependenciesOk(columnName.toStdString(), code.toStdString()))
 		emit sendComputeCode(columnName, code, colType);
@@ -145,7 +148,7 @@ void ComputedColumnsModel::sendCode(QString code)
 {
 	std::string columnName = _currentlySelectedName.toStdString();
 	setComputeColumnRCode(code);
-	emitSendComputeCode(_currentlySelectedName, computeColumnRCodeCommentStripped(), (*_computedColumns)[columnName].columnType());
+	emitSendComputeCode(_currentlySelectedName, computeColumnRCodeCommentStripped(), _package->getColumnType(columnName));
 }
 
 void ComputedColumnsModel::validate(QString columnName)
@@ -178,38 +181,17 @@ void ComputedColumnsModel::emitHeaderDataChanged(QString name)
 {
 	try
 	{
-		int index = _package->dataSet()->getColumnIndex(name.toStdString());
+		int index = _package->getColumnIndex(name.toStdString());
 		emit headerDataChanged(Qt::Horizontal, index, index);
 	}
 	catch(...){}
-}
-
-void ComputedColumnsModel::setDataSetPackage(DataSetPackage * package)
-{
-	DataSetPackage * oldPackage = _package;
-
-	_package = package;
-	_computedColumns = _package == nullptr ? nullptr : _package->computedColumnsPointer();
-
-	if(oldPackage != _package)
-		emit datasetLoadedChanged();
 }
 
 void ComputedColumnsModel::revertToDefaultInvalidatedColumns()
 {
 	for(ComputedColumn * col : *_computedColumns)
 		if(col->isInvalidated())
-		{
-			try
-			{
-				col->column()->setDefaultValues();
-
-				emit refreshColumn(col->column());
-				emitHeaderDataChanged(QString::fromStdString(col->name()));
-
-			}
-			catch(...){}
-		}
+			_package->columnSetDefaultValues(col->name());
 }
 
 void ComputedColumnsModel::computeColumnSucceeded(QString columnNameQ, QString warningQ, bool dataChanged)
@@ -223,10 +205,7 @@ void ComputedColumnsModel::computeColumnSucceeded(QString columnNameQ, QString w
 		emit computeColumnErrorChanged();
 
 	if(dataChanged)
-		try{
-			emit refreshColumn((*_computedColumns)[columnName].column());
-		}
-		catch(...){}
+			emit refreshColumn(tq(columnName));
 
 	validate(QString::fromStdString(columnName));
 
@@ -244,38 +223,23 @@ void ComputedColumnsModel::computeColumnFailed(QString columnNameQ, QString erro
 	if(areLoopDependenciesOk(columnName) && _computedColumns->setError(columnName, error) && shouldNotifyQML)
 		emit computeColumnErrorChanged();
 
-	clearColumn(columnName);
+	_package->columnSetDefaultValues(columnName);
 
 	validate(QString::fromStdString(columnName));
 	invalidateDependents(columnName);
 
 }
 
-void ComputedColumnsModel::clearColumn(std::string columnName)
-{
-	try
-	{
-		ComputedColumn * col = &((*_computedColumns)[columnName]);
-		col->column()->setDefaultValues();
-
-		emit refreshColumn(col->column());
-		emitHeaderDataChanged(QString::fromStdString(col->name()));
-	}
-	catch(columnNotFound e){}
-
-
-}
-
 void ComputedColumnsModel::recomputeColumn(std::string columnName)
 {
-	clearColumn(columnName);
+	if(!_package->isColumnComputed(columnName))
+		return;
+
+	_package->columnSetDefaultValues(columnName);
 	_computedColumns->findAllColumnNames();
-	try
-	{
-		ComputedColumn * col = &((*_computedColumns)[columnName]);
-		col->findDependencies();
-	}
-	catch(columnNotFound e){}
+
+	try { ((*_computedColumns)[columnName]).findDependencies(); }
+	catch(columnNotFound &){}
 
 	checkForDependentColumnsToBeSent(columnName, true);
 }
@@ -295,7 +259,7 @@ void ComputedColumnsModel::checkForDependentColumnsToBeSent(std::string columnNa
 		if(	col->codeType() != ComputedColumn::computedType::analysis				&&
 			col->codeType() != ComputedColumn::computedType::analysisNotComputed	&&
 			col->iShouldBeSentAgain() )
-			emitSendComputeCode(QString::fromStdString(col->name()), QString::fromStdString(col->rCodeCommentStripped()), col->columnType());
+			emitSendComputeCode(QString::fromStdString(col->name()), QString::fromStdString(col->rCodeCommentStripped()), _package->getColumnType(columnName));
 
 	checkForDependentAnalyses(columnName);
 }
@@ -334,7 +298,7 @@ void ComputedColumnsModel::removeColumn()
 
 void ComputedColumnsModel::packageSynchronized(const std::vector<std::string> & changedColumns, const std::vector<std::string> & missingColumns, const std::map<std::string, std::string> & changeNameColumns, bool rowCountChanged)
 {
-	_computedColumns->refreshColumnPointers();
+	_computedColumns->findAllColumnNames();
 
 	for(ComputedColumn * col : *_computedColumns)
 	{
@@ -367,7 +331,9 @@ void ComputedColumnsModel::packageSynchronized(const std::vector<std::string> & 
 			{
 				invalidateMe = true;
 				col->setConstructorJson(JsonUtilities::removeColumnsFromDragNDropFilterJSON(col->constructorJson(), missing));
-				if(col->codeType() == ComputedColumn::computedType::constructorCode)	col->setRCode("stop('Certain columns where removed from the definition of this computed column.')");
+
+				if(col->codeType() == ComputedColumn::computedType::constructorCode)
+					col->setRCode("stop('Certain columns where removed from the definition of this computed column.')");
 
 				if(col->name() == _currentlySelectedName.toStdString())
 				{
@@ -390,32 +356,14 @@ void ComputedColumnsModel::packageSynchronized(const std::vector<std::string> & 
 		col->findDependencies(); //columnNames might have changed right? so check it again
 
 		if(col->iShouldBeSentAgain())
-			emitSendComputeCode(QString::fromStdString(col->name()), QString::fromStdString(col->rCodeCommentStripped()), col->columnType());
+			emitSendComputeCode(QString::fromStdString(col->name()), QString::fromStdString(col->rCodeCommentStripped()), _package->getColumnType(col->name()));
 	}
 }
 
 
-ComputedColumn * ComputedColumnsModel::createComputedColumn(QString name, int columnType, ComputedColumn::computedType computeType, Analysis * analysis)
+ComputedColumn * ComputedColumnsModel::createComputedColumn(QString name, int colType, ComputedColumn::computedType computeType, Analysis * analysis)
 {
 	bool success			= false;
-	DataSet	*theData		= _package->dataSet();
-	size_t newColumnIndex	= theData->columnCount();
-
-	do
-	{
-		try {
-			theData->setColumnCount(newColumnIndex + 1);
-			success = true;
-		}
-		catch (boost::interprocess::bad_alloc &e)
-		{
-			try {	theData = SharedMemory::enlargeDataSet(theData);	}
-			catch (std::exception &e)	{	throw std::runtime_error("Out of memory: this data set is too large for your computer's available memory");	}
-		}
-		catch (std::exception e)	{	Log::log() << "ComputedColumnsModel::createComputedColum std::exception: " << e.what()	<< std::endl; 	}
-		catch (...)					{	Log::log() << "ComputedColumnsModel::createComputedColum some other exception\n "		<< std::endl;	}
-	}
-	while (!success);
 
 	bool	createActualComputedColumn	= computeType != ComputedColumn::computedType::analysisNotComputed,
 			showComputedColumn			= createActualComputedColumn && computeType != ComputedColumn::computedType::analysis;
@@ -424,13 +372,12 @@ ComputedColumn * ComputedColumnsModel::createComputedColumn(QString name, int co
 
 	if(createActualComputedColumn)
 	{
-		createdColumn = computedColumnsPointer()->createComputedColumn(name.toStdString(), (Column::ColumnType)columnType, computeType);
+		createdColumn = computedColumnsPointer()->createComputedColumn(name.toStdString(), columnType(colType), computeType);
 		createdColumn->setAnalysis(analysis);
 	}
 	else
-		computedColumnsPointer()->createColumn(name.toStdString(), (Column::ColumnType)columnType);
+		computedColumnsPointer()->createColumn(name.toStdString(), columnType(colType));
 
-	emit dataSetChanged(_package->dataSet());
 	emit refreshData();
 
 
@@ -447,7 +394,7 @@ ComputedColumn *	ComputedColumnsModel::requestComputedColumnCreation(QString col
 	if(!_package->isColumnNameFree(columnName.toStdString()))
 		return nullptr;
 
-	return createComputedColumn(columnName, (int)Column::ColumnTypeScale, ComputedColumn::computedType::analysis, analysis);
+	return createComputedColumn(columnName, int(columnType::scale), ComputedColumn::computedType::analysis, analysis);
 }
 
 void ComputedColumnsModel::requestColumnCreation(QString columnName, Analysis * analysis, int columnType)
@@ -464,11 +411,11 @@ void ComputedColumnsModel::requestComputedColumnDestruction(QString columnNameQ)
 
 	std::string columnName = columnNameQ.toStdString();
 
-	int index = _package->dataSet()->getColumnIndex(columnName);
+	int index = _package->getColumnIndex(columnName);
 
 	_computedColumns->removeComputedColumn(columnName);
 
-	emit headerDataChanged(Qt::Horizontal, index, _package->dataSet()->columns().columnCount() + 1);
+	emit headerDataChanged(Qt::Horizontal, index, _package->columnCount() + 1);
 
 	_analyses->applyToAll([&](Analysis * analysis)
 		{ analysis->removeUsedVariable(columnName); } );

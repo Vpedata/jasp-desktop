@@ -20,9 +20,9 @@ class ComputedColumnsModel : public QObject
 	Q_PROPERTY(QString	showThisColumn				READ showThisColumn					WRITE setShowThisColumn					NOTIFY showThisColumnChanged			)
 
 public:
-	explicit	ComputedColumnsModel(Analyses * analyses, QObject * parent);
+	explicit	ComputedColumnsModel(Analyses * analyses, DataSetPackage * dataSetPackage);
 
-				bool	datasetLoaded()					{ return _package != nullptr; }
+				bool	datasetLoaded()					{ return _package->hasDataSet(); }
 				QString	computeColumnRCode();
 				QString computeColumnRCodeCommentStripped();
 				QString computeColumnError();
@@ -65,19 +65,18 @@ private:
 				void	invalidate(QString name);
 				void	invalidateDependents(std::string columnName);
 				void	checkForDependentColumnsToBeSent(std::string columnName, bool refreshMe = false);
-				void	emitSendComputeCode(QString columnName, QString code, Column::ColumnType colType);
-				void	clearColumn(std::string columnName);
+				void	emitSendComputeCode(QString columnName, QString code, columnType colType);
+
 signals:
 				void	datasetLoadedChanged();
 				void	computeColumnRCodeChanged();
 				void	computeColumnErrorChanged();
 				void	computeColumnJsonChanged();
-				void	refreshColumn(Column * column);
+				void	refreshColumn(QString columnName);
 				void	computeColumnNameSelectedChanged();
 				void	headerDataChanged(Qt::Orientation orientation, int first, int last);
-				void	sendComputeCode(QString columnName, QString code, Column::ColumnType columnType);
+				void	sendComputeCode(QString columnName, QString code, columnType columnType);
 				void	computeColumnUsesRCodeChanged();
-				void	dataSetChanged(DataSet * newDataSet);
 				void	refreshData();
 				void	showAnalysisForm(Analysis *analysis);
 				void	lastCreatedColumnChanged(QString lastCreatedColumn);

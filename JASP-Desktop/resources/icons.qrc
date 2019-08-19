@@ -133,5 +133,7 @@
         <file>icons/analysis-ml-regression.svg</file>
         <file>icons/analysis-ml-clustering.svg</file>
         <file>icons/analysis-ml-ribbon.svg</file>
+        <file>icons/eyeClosed.png</file>
+        <file>icons/eyeOpen.png</file>
     </qresource>
 </RCC>
