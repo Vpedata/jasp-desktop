@@ -61,31 +61,31 @@ grid_arrange_shared_legend <- function(..., plotList = NULL, nrow = 1, ncol = le
 #
 # }
 
-#' @export
-combinePlots = function(graph1, graph2, position = "posterior_pizza") {
-
-	if (position == "posterior_pizza") {
-
-		# read this as: graph 1 x coordinate
-		g1x = 0; g1y = 0; g1w = 1; g1h = .75
-		g2x = .38; g2y = .7; g2w = .3; g2h = .3
-
-	} else if (is.list(position)) {
-
-
-	}
-
-	return(
-		cowplot::ggdraw() +
-			cowplot::draw_plot(graph1, x = g1x, y = g1y, width = g1w, height = g1h) +
-			cowplot::draw_plot(graph2, x = g2x, y = g2y, width = g2w, height = g2h) #+
-		# cowplot::draw_label(l0, x = .175, y = .875, size = fontsize) +
-		# cowplot::draw_label(l1, x = .525, y = .95, size = fontsize) +
-		# cowplot::draw_label(l2, x = .525, y = .75, size = fontsize) +
-		# cowplot::draw_label(l3, x = .75, y = .875, size = fontsize)
-	)
-
-}
+# @export
+# combinePlots = function(graph1, graph2, position = "posterior_pizza") {
+#
+# 	if (position == "posterior_pizza") {
+#
+# 		# read this as: graph 1 x coordinate
+# 		g1x = 0; g1y = 0; g1w = 1; g1h = .75
+# 		g2x = .38; g2y = .7; g2w = .3; g2h = .3
+#
+# 	} else if (is.list(position)) {
+#
+#
+# 	}
+#
+# 	return(
+# 		cowplot::ggdraw() +
+# 			cowplot::draw_plot(graph1, x = g1x, y = g1y, width = g1w, height = g1h) +
+# 			cowplot::draw_plot(graph2, x = g2x, y = g2y, width = g2w, height = g2h) #+
+# 		# cowplot::draw_label(l0, x = .175, y = .875, size = fontsize) +
+# 		# cowplot::draw_label(l1, x = .525, y = .95, size = fontsize) +
+# 		# cowplot::draw_label(l2, x = .525, y = .75, size = fontsize) +
+# 		# cowplot::draw_label(l3, x = .75, y = .875, size = fontsize)
+# 	)
+#
+# }
 
 #' @export
 ggplotBtyN <- function(graph = drawAxis(), xBreaks = NULL, yBreaks = NULL, ...) {
@@ -559,10 +559,10 @@ understandGraphType <- function(graphType) {
 
         } else {
 
-            graphFun <- switch(choice,
-               "priorPosteriorCor" = list(drawLines, drawPoints, drawWheel, combinePlots)
-
-            )
+            # graphFun <- switch(choice,
+            #    "priorPosteriorCor" = list(drawLines, drawPoints, drawWheel, combinePlots)
+            #
+            # )
 
         }
 
