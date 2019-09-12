@@ -399,7 +399,7 @@ QProcess * EngineSync::startSlaveProcess(int no)
 	env.insert("R_HOME",			rHome.absolutePath());
 	env.insert("JASP_R_HOME",		rHome.absolutePath()); //Used by the modified R script in jasp-required-files/Framework/etc/bin to make sure we use the actual R of JASP! (https://github.com/jasp-stats/INTERNAL-jasp/issues/452)
 	env.insert("R_LIBS",			rHome.absoluteFilePath("library") + ":" + programDir.absoluteFilePath("R/library"));
-	env.insert("JAGS_HOME",			programDir.absoluteFilePath("JAGS/jags"));
+	env.insert("JAGS_HOME",			programDir.absoluteFilePath("JAGS/"));
 
 	//env.insert("R_ENVIRON",			"something-which-doesnt-exist");
 	//env.insert("R_PROFILE",			"something-which-doesnt-exist");
