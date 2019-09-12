@@ -6,7 +6,9 @@ JASPgraphs_data <- list2env(list(
   colorblind  = list(colors = RColorBrewer::brewer.pal(8L, "Dark2")),
   colorblind2 = list(colors = RColorBrewer::brewer.pal(8L, "Set2")),
   colorblind3 = list(colors = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")), # from ggthemes
-  viridis     = list(colors = viridisLite::viridis(256L)) # viridis::scale_color_viridis
+  viridis     = list(colors = viridisLite::viridis(256L)), # viridis::scale_color_viridis
+  blue        = list(colors = c("#d1e1ec", "#b3cde0", "#6497b1", "#005b96", "#03396c", "#011f4b")), # bayesplot::color_scheme_get("blue") 
+  gray        = list(colors = c("#DFDFDF", "#bfbfbf", "#999999", "#737373", "#505050", "#383838"))  # bayesplot::color_scheme_get("gray") 
 ))
 
 #'@title JASP color palettes
@@ -14,7 +16,7 @@ JASPgraphs_data <- list2env(list(
 #'@param palette Palette to choose from.
 #'@param asFunction Should a function be returned or the raw colors? If a function is returned, it either takes a single integer or a vector in 0, 1 as input.
 #'@param discete Should the function returned be suited for a discrete scale or a continuous one? Only used when \code{asFunction = TRUE}.
-#'@param ... Further arguments for \code{\link{ggplot2::scale_color_manual}} or \code{\link{ggplot2::scale_fill_manual}}.
+#'@param ... Further arguments for \code{\link[ggplot2]{scale_color_manual}}.
 #'
 #'@details For ggplot2s, the convenience functions \code{scale_JASPcolor_\*} and \code{scale_JASPfill_\*} exist.
 #'
@@ -22,12 +24,12 @@ JASPgraphs_data <- list2env(list(
 #'@export
 #'@example inst/examples/ex-colorPalettes.R
 #'@rdname colors
-JASPcolors <- function(palette = getGraphOption("palette")[["palette"]], asFunction = FALSE) {
+JASPcolors <- function(palette = getGraphOption("palette"), asFunction = FALSE) {
 
   if (!is.character(palette)) {
     stop("palette must be character!")
   } else if (!palette %in% names(JASPgraphs_data)) {
-    stop(sprintf("palette was %s but must be one of %s", as.character(palette), names(JASPgraphs_data)))
+    stop(sprintf("palette was %s but must be one of %s", as.character(palette), paste(names(JASPgraphs_data), collapse = ", ")))
   }
   colors <- JASPgraphs_data[[palette]][["colors"]]
   if (asFunction) {
