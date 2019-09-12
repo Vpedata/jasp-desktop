@@ -29,7 +29,6 @@
 #include <QRegularExpression>
 #include <QList>
 #include <QSet>
-#include <QDebug>
 
 #include "log.h"
 
@@ -285,29 +284,18 @@ void BoundQMLTextArea::setJagsParameters()
 	// regex to match all words after whitespace or { and ~ or = or <-.
 	QRegularExpression getParametersFromModel("(?<={|\\s)\\b(\\w*)(.*)(?=~|=|<-)");
 	QRegularExpressionMatchIterator i = getParametersFromModel.globalMatch(_text);
-	qInfo() << "_text: " << _text;
 
 	QSet<QString> parameters;
 	while (i.hasNext())
 	{
 		QRegularExpressionMatch match = i.next();
 		QString parameter = match.captured(1);
-		qInfo() << "match contains: " << parameter;
 		if (parameter != "" && columnNames.find(parameter.toUtf8().constData()) == columnNames.end())
-		{
 			parameters << parameter;
-			qInfo() << "parameter: " << parameter;
-		}
-		else
-		{
-			qInfo() << "excluded: " << parameter;
-		}
 	}
 	if (_model)
 	{
 		_model->initTerms(parameters.toList());
 		emit _model->modelChanged();
 	}
-//	else
-//		qInfo() << "No model Parameter view";
 }

@@ -22,6 +22,7 @@
 #include "analysis/analysisform.h"
 #include "analysis/options/optionstring.h"
 #include "analysis/options/optionterm.h"
+#include "r_functionwhitelist.h"
 
 void ListModelJAGSDataInput::sourceTermsChanged(Terms *, Terms *)
 {
