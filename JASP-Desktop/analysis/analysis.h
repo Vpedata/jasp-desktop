@@ -121,8 +121,8 @@ public:
 			int					revision()			const	{ return _revision;							}
 			bool				isRefreshBlocked()	const	{ return _refreshBlocked;					}
 			QString				helpFile()			const	{ return _helpFile;							}
-	const	Json::Value		&	getSaveImgOptions()	const	{ return _saveImgOptions;					}
-	const	Json::Value		&	getImgResults()		const	{ return _imgResults;						}
+	const	Json::Value		&	imgOptions()		const	{ return _imgOptions;						}
+	const	Json::Value		&	imgResults()		const	{ return _imgResults;						}
 			DataSet			*	getDataSet()		const;
 	Modules::DynamicModule	*	dynamicModule()		const	{ return _dynamicModule;					}
 			AnalysisForm	*	form()				const	{ return _analysisForm;						}
@@ -187,7 +187,7 @@ protected:
 							_results		= Json::nullValue,
 							_imgResults		= Json::nullValue,
 							_userData		= Json::nullValue,
-							_saveImgOptions	= Json::nullValue,
+							_imgOptions		= Json::nullValue,
 							_progress		= Json::nullValue;
 
 private:
