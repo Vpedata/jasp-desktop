@@ -384,15 +384,16 @@ QProcess * EngineSync::startSlaveProcess(int no)
 
 	env.insert("PATH",				programDir.absoluteFilePath("R\\library\\RInside\\libs\\" ARCH_SUBPATH) + ";" + programDir.absoluteFilePath("R\\library\\Rcpp\\libs\\" ARCH_SUBPATH) + ";" + programDir.absoluteFilePath("R\\bin\\" ARCH_SUBPATH));
 	env.insert("R_HOME",			rHomeWin);
+	env.insert("JAGS_HOME",			programDir.absoluteFilePath("JAGS/"));
 
 #undef ARCH_SUBPATH
 
 	env.insert("R_LIBS",			rHomeWin + "\\library");
 
-	env.insert("R_ENVIRON",			"something-which-doesnt-exist");
-	env.insert("R_PROFILE",			"something-which-doesnt-exist");
-	env.insert("R_PROFILE_USER",	"something-which-doesnt-exist");
-	env.insert("R_ENVIRON_USER",	"something-which-doesnt-exist");
+	env.insert("R_ENVIRON",			"something-which-doesn't-exist");
+	env.insert("R_PROFILE",			"something-which-doesn't-exist");
+	env.insert("R_PROFILE_USER",	"something-which-doesn't-exist");
+	env.insert("R_ENVIRON_USER",	"something-which-doesn't-exist");
 
 #elif __APPLE__
 

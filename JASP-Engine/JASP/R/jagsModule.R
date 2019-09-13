@@ -780,7 +780,7 @@ JAGS <- function(jaspResults, dataset, options, state = NULL) {
   e <- try(loadNamespace("rjags"), silent = TRUE)
   if (isTryError(e)) {
     # Sys.getenv() returns "" if nothing was found
-    jaspContainer$setError(paste0("Could not find the JAGS executable at ", Sys.getenv("JAGS_HOME"), ".\nPlease contact the JASP team for support.\nError was: ", e))
+    jaspContainer$setError(paste0("There was a problem loading JAGS, JAGS_HOME is: ", Sys.getenv("JAGS_HOME"), ".\nPlease contact the JASP team for support.\nError was: ", e))
   } else if (isTRUE(rjags::jags.version() < "4.3.0")) {
     jaspContainer$setError(paste("Expected JAGS version 4.3.0 but found", as.character(rjags::jags.version())))
   }
