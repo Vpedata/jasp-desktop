@@ -147,6 +147,7 @@ DISTFILES += \
     JASP/R/cfa.R \
     JASP/R/classicalAudit.R \
     JASP/R/classicalmetaanalysis.R \
+    JASP/R/bayesianmetaanalysis.R \
     JASP/R/classicalPlanning.R \
     JASP/R/common.R \
     JASP/R/commonAnovaBayesian.R \
