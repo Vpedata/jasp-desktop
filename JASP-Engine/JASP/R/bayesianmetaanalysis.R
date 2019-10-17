@@ -43,7 +43,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
   
   # Dataset with effectSize, standardError, and studyLabels
   # If data is null stuff is missing
-  dataset <- .readData(jaspResults, options)
+  dataset <- .bmaReadData(jaspResults, options)
     
   # Table: Posterior Model Estimates
   if(options$mainTable){
@@ -62,27 +62,27 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
   
   # Plot: Prior(s); only when checked  
   if(options$plotPrior){
-    .priorPlot(jaspResults, dataset, options, ready)
+    .bmaPriorPlot(jaspResults, dataset, options, ready)
   }
   
   # Plot: Prior(s) and Posterior(s); only when checked 
   if(options$plotPosterior){  
-    .priorAndPosteriorPlot(jaspResults, dataset, options, ready, dependencies)
+    .bmaPriorAndPosteriorPlot(jaspResults, dataset, options, ready, dependencies)
   }
   
   # Plot: Forest plot; only when checked
   if(options$checkForestPlot || options$plotCumForest){  
-    .forestPlot(jaspResults, dataset, options, ready, dependencies)
+    .bmaForestPlot(jaspResults, dataset, options, ready, dependencies)
   }
   
   # Plot: Cumulative forest plot and sequential; only when checked
   if(options$plotSequential || options$plotSeqPM){
-    .sequentialPlot(jaspResults, dataset, options, ready, dependencies)
+    .bmaSequentialPlot(jaspResults, dataset, options, ready, dependencies)
   }
 }
   
   # Get dataset
-  .readData <- function(jaspResults, options){
+  .bmaReadData <- function(jaspResults, options){
     varES <- options[["effectSize"]]
     varSE <- options[["standardError"]]
     CI <- unlist(options$confidenceInterval)
@@ -616,7 +616,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
   }
   
   # Plot: prior(s)  
-  .priorPlot <- function(jaspResults, dataset, options, ready) {
+  .bmaPriorPlot <- function(jaspResults, dataset, options, ready) {
     priorContainer <- createJaspContainer(title = "Prior")
     priorContainer$dependOn("plotPrior")
     jaspResults[["priorContainer"]] <- priorContainer
@@ -636,7 +636,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
                          "checkLowerTruncT", "lowerTruncT", "checkUpperTruncT", "upperTruncT"))
     
     # Fill plot with effect size prior
-    .fillPriorPlot(priorPlot, jaspResults, dataset, options, type = "ES")
+    .bmaFillPriorPlot(priorPlot, jaspResults, dataset, options, type = "ES")
     priorContainer[["ES"]] <- priorPlot
 
     # Make plot hetergeneity prior
@@ -645,13 +645,13 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
                                     width = 350, height = 350)
       priorPlotSE$dependOn(c("priorSE", "inverseGamma", "inverseGammaShape", "inverseGammaScale",
                              "halfT", "informativehalfTScale", "informativehalfTDf"))
-      .fillPriorPlot(priorPlotSE, jaspResults, dataset, options, type = "SE")
+      .bmaFillPriorPlot(priorPlotSE, jaspResults, dataset, options, type = "SE")
       priorContainer[["SE"]] <- priorPlotSE
     }
   }
   
   # Fill prior plot
-  .fillPriorPlot <- function(priorPlot, jaspResults, dataset, options, type){
+  .bmaFillPriorPlot <- function(priorPlot, jaspResults, dataset, options, type){
     # Get priors from jasp state
     if (is.null(jaspResults[["bmaPriors"]]))
       .bmaPriors(jaspResults, options)
@@ -702,7 +702,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
   }
 
   # Plot: Prior and Posterior
-  .priorAndPosteriorPlot <- function(jaspResults, dataset, options, ready, dependencies) {
+  .bmaPriorAndPosteriorPlot <- function(jaspResults, dataset, options, ready, dependencies) {
     postContainer <- createJaspContainer(title = "Prior and Posteriors")
     postContainer$dependOn(c(dependencies, "plotPosterior", "shade"))
     jaspResults[["postContainer"]] <- postContainer
@@ -726,7 +726,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
     }
     
     # Fill posterior plot effect size
-    .fillPostPlot(postPlotES, jaspResults, dataset, options, type = "ES")
+    .bmaFillPostPlot(postPlotES, jaspResults, dataset, options, type = "ES")
     postContainer[["ES"]] <- postPlotES
 
     # Make posterior plot heterogeneity
@@ -735,12 +735,12 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
       postPlotSE$dependOn(c("priorSE", "inverseGamma", "inverseGammaShape", "inverseGammaScale",
                             "halfT", "informativehalfTScale", "informativehalfTDf"))
       postContainer[["SE"]] <- postPlotSE
-      .fillPostPlot(postPlotSE, jaspResults, dataset, options, type = "SE")
+      .bmaFillPostPlot(postPlotSE, jaspResults, dataset, options, type = "SE")
    }
   }
   
   # Fill prior and posterior plot
-  .fillPostPlot <- function(postPlot, jaspResults, dataset, options, type){
+  .bmaFillPostPlot <- function(postPlot, jaspResults, dataset, options, type){
     # Get results from jasp state
     m <- jaspResults[["bmaResults"]]$object
 
@@ -883,7 +883,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
   }
   
   # Plot: Forest plot
-  .forestPlot <- function(jaspResults, dataset, options, ready, dependencies) {
+  .bmaForestPlot <- function(jaspResults, dataset, options, ready, dependencies) {
     forestContainer <- createJaspContainer(title = "Forest Plot")
     forestContainer$dependOn(dependencies)
     jaspResults[["forestContainer"]] <- forestContainer
@@ -922,7 +922,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
       forestPlot$dependOn(c("plotForestObserved", "plotForestEstimated", "plotForestBoth", 
                             "checkForestPlot", "ascendingForest", "labelForest",
                             "orderForest"))
-      .fillForestPlot(forestPlot, jaspResults, dataset, options, studyLabels)
+      .bmaFillForestPlot(forestPlot, jaspResults, dataset, options, studyLabels)
       # Add plot to container
       forestContainer[["forestPlot"]] <- forestPlot
     }
@@ -933,14 +933,14 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
     if(options$plotCumForest){
       cumForestPlot <- createJaspPlot(plot = NULL, title = "Cumulative forest plot", height = height, width = width)
       cumForestPlot$dependOn("plotCumForest")
-      .fillCumForest(cumForestPlot, jaspResults, dataset, options, studyLabels, dependencies)
+      .bmaFillCumForest(cumForestPlot, jaspResults, dataset, options, studyLabels, dependencies)
       forestContainer[["cumForestPlot"]] <- cumForestPlot
     }
 
     
   }
   
-  .fillForestPlot <- function(forestPlot, jaspResults, dataset, options, studyLabels){
+  .bmaFillForestPlot <- function(forestPlot, jaspResults, dataset, options, studyLabels){
     # Get analysis results from jasp state
     m <- jaspResults[["bmaResults"]]$object
     
@@ -1227,7 +1227,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
     return()
   }
   
-  .fillCumForest <- function(cumForestPlot, jaspResults, dataset, options, studyLabels, dependencies){
+  .bmaFillCumForest <- function(cumForestPlot, jaspResults, dataset, options, studyLabels, dependencies){
 
     rowResults <- .bmaSequentialResults(jaspResults, dataset, options, dependencies)
     
@@ -1287,7 +1287,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
       
   }
   
-  .sequentialPlot <- function(jaspResults, dataset, options, ready, dependencies) {
+  .bmaSequentialPlot <- function(jaspResults, dataset, options, ready, dependencies) {
     # Create empty plot
     seqContainer <- createJaspContainer(title = "Sequential Analysis")
     seqContainer$dependOn(dependencies)
@@ -1305,19 +1305,19 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
       seqPlot <- createJaspPlot(plot = NULL, title = "Bayes factors", height = 400, width = 530)
       seqPlot$dependOn(c("plotSequential", "BF")) 
       seqContainer[["seqPlot"]] <- seqPlot
-      .fillSeqPlot(seqPlot, jaspResults, dataset, options, dependencies)
+      .bmaFillSeqPlot(seqPlot, jaspResults, dataset, options, dependencies)
     }
     
     if(options$plotSeqPM){
       seqPMPlot <- createJaspPlot(plot = NULL, title = "Posterior model probabilities", height = 400, width = 530)
       seqPMPlot$dependOn("plotSeqPM")
-      .fillSeqPM(seqPMPlot, jaspResults, dataset, options, dependencies)
+      .bmaFillSeqPM(seqPMPlot, jaspResults, dataset, options, dependencies)
       seqContainer[["seqPMPlot"]] <- seqPMPlot
     }
     
   }
     
-  .fillSeqPlot <- function(seqPlot, jaspResults, dataset, options, dependencies){
+  .bmaFillSeqPlot <- function(seqPlot, jaspResults, dataset, options, dependencies){
     
     rowResults <- .bmaSequentialResults(jaspResults, dataset, options, dependencies)
     
@@ -1352,7 +1352,7 @@ BayesianMetaAnalysis <- function(jaspResults, dataset, options) {
     return()
   }
   
-  .fillSeqPM <- function(seqPMPlot, jaspResults, dataset, options, dependencies){
+  .bmaFillSeqPM <- function(seqPMPlot, jaspResults, dataset, options, dependencies){
     n     <- nrow(dataset)
     x     <- 0:n
     x     <- x[-2]
