@@ -2265,6 +2265,7 @@ as.list.footnotes <- function(footnotes) {
     if(requireNamespace("JASPgraphs", quietly = TRUE))
       plotEditingOptions <- JASPgraphs::plotEditingOptions(graph=plot, asJSON=TRUE)
 
+
   } else {
 
     # Calculate pixel multiplier
@@ -2304,6 +2305,7 @@ as.list.footnotes <- function(footnotes) {
 
     image[["obj"]]         <- plot
     image[["editOptions"]] <- plotEditingOptions
+    #print(image[["editOptions"]])
   }
 
 
@@ -2738,6 +2740,7 @@ editImage <- function(optionsJson) {
   # assumption: state[["figures"]][[plotName]] is either of class "ggplot2" or "recordedPlot"
 
   optionsList   <- fromJSON(optionsJson)
+  #print(optionsList)
   plotName      <- optionsList[["data"]]
   type          <- optionsList[["type"]]
   width         <- optionsList[["width"]]
@@ -2751,7 +2754,6 @@ editImage <- function(optionsJson) {
   isGgplot      <- ggplot2::is.ggplot(oldPlot) # FALSE implies oldPlot is a  recordedPlot
   requireResize <- type == "resize"
   save(optionsJson, optionsList, oldPlot, file = "~/plotEditing.Rdata")
-print(optionsList)
   if (!is.null(oldPlot)) {
   # this try is required because resizing and editing may fail for various reasons.
   # An example is the "figure margins too large" error when the plot area is too small.
@@ -2766,13 +2768,21 @@ print(optionsList)
         oldOpts <- JASPgraphs::plotEditingOptions(plot)
         newOpts$xAxis <- list(
           type     = oldOpts$xAxis$type,
-          settings = newOpts$xAxis[names(newOpts$xAxis) != "type"]
+          settings = newOpts$xAxis[names(newOpts$xAxis) != "type"],
+          labelCoords = newOpts$xAxis$xAxisLabelCoords,
+          tickCoords  = newOpts$xAxis$xAxisTickCoords
         )
         newOpts$yAxis <- list(
           type     = oldOpts$yAxis$type,
-          settings = newOpts$yAxis[names(newOpts$yAxis) != "type"]
+          settings = newOpts$yAxis[names(newOpts$yAxis) != "type"],
+          labelCoords = newOpts$yAxis$yAxisLabelCoords,
+          tickCoords  = newOpts$yAxis$yAxisTickCoords
         )
         plot <- JASPgraphs::plotEditing(plot, newOpts)
+
+        #print(oldOpts$yAxis$yAxisLabelCoords)
+        #print("test")
+        #print(newOpts$yAxis$yAxisLabelCoords)
 
        # editedPlot <- ggedit::ggedit(oldPlot, viewer = shiny::browserViewer())
        # plot <- editedPlot[["UpdatedPlots"]][[1]]

@@ -59,91 +59,217 @@ Popup
 
                         anchors
                         {
-                            bottom: bar.top
+                            top:    parent.top
+                            bottom: mainBar.top
                         }
                     }
 
-                    TabBar {
-                        id: bar
-                        width: 500
-                        z:      1
+                    TabBar
+                    {
+                        id:     mainBar
+                        width:  250
+                        x:      450
 
                         anchors
                         {
-                            left:    yAxisId.right
+                            bottom:    plotImgRect.top
+                            //center?:       plotImgRect.horizontalCenter
                             margins:			Theme.generalAnchorMargin
+                        }
+                        TabButton {
+                            id:   mainGraph
+                            text: qsTr("Main Graph")
+                            onClicked:
+                            {
+                            }
+                        }
+                        TabButton {
+                            id:     mainOther
+                            text: qsTr("Other")
+                            onClicked:
+                            {
+                            }
+                        }
+                    }
+
+                    TabBar
+                    {
+                        id:     sideImageBar
+                        visible: false
+                        anchors
+                        {
+                            left:    colorBoxIdY.left
+                            right:   colorBoxIdY.right
+                            bottom:  colorBoxIdY.top
+                            bottomMargin: Theme.generalAnchorMargin
+                        }
+                        TabButton {
+                            id:   sideImageBarColor
+                            text: qsTr("Colors")
+                            onClicked:
+                            {
+                            }
+                        }
+                        TabButton {
+                            id:     sideImageBarPL
+                            text: qsTr("Points & Lines")
+                            onClicked: {
+                            }
+                        }
+                    }
+
+                    TabBar
+                    {
+                        id:     sideOtherBar
+                        visible: false
+                        width:  250
+
+                        anchors
+                        {
+                            left:    colorBoxIdY.left
+                            right:   colorBoxIdY.right
+                            bottom:  colorBoxIdY.top
+                            bottomMargin: Theme.generalAnchorMargin
                         }
 
                         TabButton {
-                            text: qsTr("Colors")
-                            onClicked: {
-                            colorBoxIdY.isClicked = true
-                            colorBoxIdY.isClicked = true
-                            pointsLinesBoxIdY.isClicked = false
-                            pointsLinesBoxIdX.isClicked = false
-                            fontBoxIdY.isClicked = false
-                            fontBoxIdX.isClicked = false
-                            axisBoxIdY.isClicked = false
-                            axisBoxIdX.isClicked = false
-                            }
-                        }
-                        TabButton {
-                            text: qsTr("Points/nLines")
-                            onClicked: {
-                            colorBoxIdY.isClicked = false
-                            colorBoxIdY.isClicked = false
-                            pointsLinesBoxIdY.isClicked = true
-                            pointsLinesBoxIdX.isClicked = true
-                            fontBoxIdY.isClicked = false
-                            fontBoxIdX.isClicked = false
-                            axisBoxIdY.isClicked = false
-                            axisBoxIdX.isClicked = false
-                            }
-                        }
-                        TabButton {
                             text: qsTr("Fonts")
+                            id:     sideOtherBarFonts
                             onClicked: {
-                            colorBoxIdY.isClicked = false
-                            colorBoxIdY.isClicked = false
-                            pointsLinesBoxIdY.isClicked = false
-                            pointsLinesBoxIdX.isClicked = false
-                            fontBoxIdY.isClicked = true
-                            fontBoxIdX.isClicked = true
-                            axisBoxIdY.isClicked = false
-                            axisBoxIdX.isClicked = false
                             }
                         }
                         TabButton {
+                            id:     sideOtherBarAxis
                             text: qsTr("Axis")
                             onClicked: {
-                            colorBoxIdY.isClicked = false
-                            colorBoxIdY.isClicked = false
-                            pointsLinesBoxIdY.isClicked = false
-                            pointsLinesBoxIdX.isClicked = false
-                            fontBoxIdY.isClicked = false
-                            fontBoxIdX.isClicked = false
-                            axisBoxIdY.isClicked = true
-                            axisBoxIdX.isClicked = true
                             }
                         }
                     }
 
                     Rectangle
                     {
+                        id:                      yAxisClickBoxTitle
+                        color:                   Theme.red
+                        z:                       2
+                        width:                   49
+                        height:                  385
+                        x:                       210
+
+
+                        anchors
+                        {
+                            top:            plotImgRect.top
+                        }
+
+                        MouseArea {
+                          anchors.fill: parent
+                          onClicked: {
+                          }
+                        }
+                    }
+
+                    Rectangle
+                    {
+                        id:                      yAxisClickBoxTicks
+                        color:                   Theme.blue
+                        z:                       2
+                        width:                   59
+                        height:                  385
+                        x:                       260
+
+                        anchors
+                        {
+                            top:            plotImgRect.top
+                        }
+
+                        MouseArea {
+                          anchors.fill: parent
+                          onClicked: {
+                          }
+                        }
+
+                    }
+
+                    Rectangle
+                    {
+                        id:                      xAxisClickBoxTitle
+                        color:                   Theme.green
+                        z:                       2
+                        width:                   620
+                        height:                  49
+                        y:                       500
+
+
+                        anchors
+                        {
+                            right:            plotImgRect.right
+                        }
+
+                        MouseArea {
+                          anchors.fill: parent
+                          onClicked: {
+                          }
+                        }
+
+                    }
+
+                    Rectangle
+                    {
+                        id:                      xAxisClickBoxTicks
+                        color:                   Theme.gray
+                        z:                       2
+                        width:                   620
+                        height:                  55
+                        y:                       430
+
+
+                        anchors
+                        {
+                            right:            plotImgRect.right
+                        }
+
+                        MouseArea {
+                          anchors.fill: parent
+                          onClicked: {
+                          }
+                        }
+
+                    }
+
+                    Rectangle
+                    {
+                        id:                      clickablePlotImgRect
+                        color:                   Theme.black
+                        z:                       2
+                        width:                   600
+                        height:                  350
+                        y:                       80
+                        x:                       325
+
+                        MouseArea {
+                          anchors.fill: parent
+                          onClicked: {
+                          }
+                        }
+
+                    }
+
+                    Rectangle
+                    {
                         id:				colorBoxIdY
-                        property bool isClicked: true
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         width:			parent.width * 0.2
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
                             left:			parent.left
                             leftMargin:		Theme.generalAnchorMargin
                             top:            plotImgRect.top
-                            bottom:			plotImgRect.bottom
+                            bottom:			colorBoxIdX.bottom
                         }
 
                         Text
@@ -153,7 +279,8 @@ Popup
 
                             anchors
                             {
-                                top: plotImgRect.verticalCenter
+                                top: colorBoxIdY.verticalCenter
+                                left: colorBoxIdY.horizontalCenter
                             }
                         }
                     }
@@ -161,19 +288,20 @@ Popup
                     Rectangle
                     {
                         id:				pointsLinesBoxIdY
-                        property bool isClicked: false
+
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         width:			parent.width * 0.2
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
                             left:			parent.left
                             leftMargin:		Theme.generalAnchorMargin
                             top:            plotImgRect.top
-                            bottom:			plotImgRect.bottom
+                            bottom:			colorBoxIdX.bottom
                         }
 
                         Text
@@ -183,7 +311,8 @@ Popup
 
                             anchors
                             {
-                                top: plotImgRect.verticalCenter
+                                top: pointsLinesBoxIdY.verticalCenter
+                                left: pointsLinesBoxIdY.horizontalCenter
                             }
 
                         }
@@ -192,19 +321,20 @@ Popup
                     Rectangle
                     {
                         id:				fontBoxIdY
-                        property bool isClicked: false
+
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         width:			parent.width * 0.2
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
                             left:			parent.left
                             leftMargin:		Theme.generalAnchorMargin
                             top:            plotImgRect.top
-                            bottom:			plotImgRect.bottom
+                            bottom:			colorBoxIdX.bottom
                         }
 
                         Text
@@ -214,7 +344,8 @@ Popup
 
                             anchors
                             {
-                                top: plotImgRect.verticalCenter
+                                top: fontBoxIdY.verticalCenter
+                                left: fontBoxIdY.horizontalCenter
                             }
 
                         }
@@ -223,37 +354,14 @@ Popup
 
                     Rectangle
                     {
-                        id:     test
-                        property bool isClicked: true
-                        color: isClicked ? "red" : "transparent"
-                        height: 100
-                        width:  100
-                        z:      2
-
-                        anchors
-                        {
-                            top: plotImgRect.verticalCenter
-                        }
-
-                        MouseArea {
-                                                anchors.fill: parent
-                                                onClicked: {
-                                                    test.isClicked = !test.isClicked
-                                                }
-                                            }
-
-
-                    }
-
-                    Rectangle
-                    {
                         id:				axisBoxIdY
-                        property bool isClicked: false
+
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         width:			parent.width * 0.2
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
@@ -277,12 +385,13 @@ Popup
                     Rectangle
                     {
                         id:				colorBoxIdX
-                        property bool isClicked: true
+
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         height:			Theme.font.pixelSize * 4.5
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
@@ -299,7 +408,8 @@ Popup
 
                             anchors
                             {
-                                top: plotImgRect.horizontalCenter
+                                left: colorBoxIdX.horizontalCenter
+                                top: colorBoxIdX.verticalCenter
                             }
                         }
                     }
@@ -307,12 +417,12 @@ Popup
                     Rectangle
                     {
                         id:				pointsLinesBoxIdX
-                        property bool isClicked: false
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         height:			Theme.font.pixelSize * 4.5
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
@@ -329,7 +439,8 @@ Popup
 
                             anchors
                             {
-                                top: plotImgRect.horizontalCenter
+                                left: pointsLinesBoxIdX.horizontalCenter
+                                top: pointsLinesBoxIdX.verticalCenter
                             }
 
                         }
@@ -338,12 +449,12 @@ Popup
                     Rectangle
                     {
                         id:				fontBoxIdX
-                        property bool isClicked: false
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         height:			Theme.font.pixelSize * 4.5
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
@@ -360,7 +471,8 @@ Popup
 
                             anchors
                             {
-                                top: plotImgRect.horizontalCenter
+                                left: fontBoxIdX.horizontalCenter
+                                top: fontBoxIdX.verticalCenter
                             }
 
                         }
@@ -370,12 +482,12 @@ Popup
                     Rectangle
                     {
                         id:				axisBoxIdX
-                        property bool isClicked: false
                         color:			Theme.white
                         border.color:	Theme.black
                         border.width:	preferencesModel.uiScale
                         height:			Theme.font.pixelSize * 4.5
-                        z:              isClicked ? 1 : -1
+                        z:              1
+                        visible:        false
 
                         anchors
                         {
@@ -433,6 +545,7 @@ Popup
                         border.color:		Theme.black
                         border.width:		1
                         height:				Theme.font.pixelSize * 2
+                        visible:            false
 
                         anchors
                         {
@@ -461,6 +574,7 @@ Popup
                         border.color:		Theme.black
                         border.width:		1
                         height:				Theme.font.pixelSize * 2
+                        visible:            false
 
                         anchors
                         {
@@ -490,7 +604,7 @@ Popup
                         height:					plotImg.height	+ (2 * Theme.generalAnchorMargin)
                         anchors
                         {
-                            top:				bar.bottom
+                            top:				mainBar.bottom
                             left:				yAxisId.right
                             right:				parent.right
                             margins:			Theme.generalAnchorMargin

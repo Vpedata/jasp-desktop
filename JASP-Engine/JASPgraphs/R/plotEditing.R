@@ -161,6 +161,7 @@ plotEditingOptions.gg <- function(graph, asJSON = FALSE) {
   return(plotEditingOptions.ggplot(graph, asJSON))
 }
 
+
 #' @export
 plotEditingOptions.ggplot <- function(graph, asJSON = FALSE) {
 
@@ -168,6 +169,8 @@ plotEditingOptions.ggplot <- function(graph, asJSON = FALSE) {
   return(plotEditingOptions.ggplot_built(ggbuild, asJSON))
 
 }
+
+#gplot_gtable
 
 #' @export
 plotEditingOptions.ggplot_built <- function(ggbuild, asJSON = FALSE) {
@@ -179,16 +182,22 @@ plotEditingOptions.ggplot_built <- function(ggbuild, asJSON = FALSE) {
 
   xSettings <- getAxisInfo(currentAxis[["x"]], opts, ggbuild)
   ySettings <- getAxisInfo(currentAxis[["y"]], opts, ggbuild)
+  graphsCoords <- createCoords(ggplot2::ggplot_gtable(ggbuild))
+
 
   out <- list(xAxis = list(
-      type     = axisTypes[["x"]],
-      settings = xSettings
+      type        = axisTypes[["x"]],
+      settings    = xSettings
+      #labelCoords = xAxisLabelCoords,
+      #tickCoords  = xAxisTickCoords
     ), yAxis = list(
-      type     = axisTypes[["y"]],
-      settings = ySettings
+      type        = axisTypes[["y"]],
+      settings    = ySettings
+      #labelCoords = yAxisLabelCoords,
+      #tickCoords  = yAxisTickCoords
     )
   )
-
+  #save(out, file="")
   if (asJSON)
     out <- toJSON(out)
 
