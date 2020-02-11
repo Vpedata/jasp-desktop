@@ -237,5 +237,5 @@ DISTFILES += \
     JASPgraphs/inst/examples/ex-PlotPieChart.R \
     JASPgraphs/inst/examples/ex-PlotPriorAndPosterior.R \
     JASPgraphs/inst/examples/ex-PlotRobustnessSequential.R
-
+    JASPgraphs/R/exampleGgplot2hover4.R
 

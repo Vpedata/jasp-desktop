@@ -7,7 +7,6 @@ isUnitNull <- function(x) endsWith(as.character(x), "null")
 getUnitValue <- function(x) sapply(x, `[[`, 1L)
 
 computeUnit <- function(u, all, type = c("width", "height")) {
-  browser()
   type <- match.arg(type)
   if (isUnitNull(u)) {
     
@@ -24,9 +23,9 @@ computeUnit <- function(u, all, type = c("width", "height")) {
   }
   
   if (type == "width") {
-    ans <- grid::convertWidth(unew, "npc", valueOnly = TRUE)
+    ans <- grid::convertWidth(unew, "npc")
   } else {
-    ans <- grid::convertHeight(unew, "npc", valueOnly = TRUE)
+    ans <- grid::convertHeight(unew, "npc")
   }
   return(ans)
 }
@@ -156,7 +155,9 @@ grid.show.layout.modified.2 <- function(l, table, targetUnit = "native", debug =
 
 createCoords <- function(gt)
 {
+  grid.draw(gt)
   e1 <- grid.show.layout.modified.2(gtable:::gtable_layout(gt), gt, newpage = FALSE, vp.ex = 1, targetUnit = "npc") #npc is needed to make sure we get normalized coordinates
+  
     sendList <- list()
     nameList <- list()
     
